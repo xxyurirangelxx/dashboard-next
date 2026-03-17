@@ -13,8 +13,8 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'Mês ou tipo ausente' }, { status: 400 });
         }
 
-        const exactPath = `uploads/${month}/${type}.csv`;
-        const { blobs } = await list({ prefix: exactPath, limit: 1 });
+        const searchPrefix = `uploads/${month}/${type}`;
+        const { blobs } = await list({ prefix: searchPrefix, limit: 1 });
         
         if (blobs.length === 0) {
             return NextResponse.json({ success: false, error: 'Arquivo não encontrado' }, { status: 404 });

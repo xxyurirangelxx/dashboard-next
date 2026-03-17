@@ -12,8 +12,8 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'Tipo ausente' }, { status: 400 });
         }
 
-        const exactPath = `uploads/atual/${type}.csv`;
-        const { blobs } = await list({ prefix: exactPath, limit: 1 });
+        const searchPrefix = `uploads/atual/${type}`;
+        const { blobs } = await list({ prefix: searchPrefix, limit: 1 });
         
         if (blobs.length === 0) {
             return NextResponse.json({ success: false, error: 'Arquivo não encontrado no servidor' }, { status: 404 });
