@@ -160,24 +160,13 @@ export function DashboardProvider({ children }) {
     // Initialize on mount
     useEffect(() => {
         const initialLoad = async () => {
+            // 1. CARREGAMENTO INICIAL RÁPIDO DO LOCALSTORAGE (Para Core UI inicial)
             let config = Storage.load('dashboardConfigV2') || { ...defaultConfig };
             let uiConfig = Storage.load('dashboardUIConfigV1') || { ...defaultUIConfig };
             let filters = Storage.load('dashboardFiltersV1') || [];
             const sidebarPinned = Storage.load('sidebarPinned') === true;
 
-            // TRY LOAD CONFIGS FROM CLOUD FIRST
-            try {
-                const [resConfig, resUI, resFilters] = await Promise.all([
-                    fetch('/api/config?key=dashboardConfigV2').then(r => r.ok ? r.json() : null),
-                    fetch('/api/config?key=dashboardUIConfigV1').then(r => r.ok ? r.json() : null),
-                    fetch('/api/config?key=dashboardFiltersV1').then(r => r.ok ? r.json() : null)
-                ]);
-
-                if (resConfig?.success) config = resConfig.data;
-                if (resUI?.success) uiConfig = resUI.data;
-                if (resFilters?.success) filters = resFilters.data;
-            } catch (e) { console.warn("Cloud config load failed, using local", e); }
-
+            // 2. DETERMINAR MÊS INICIAL E PARÂMETROS URL
             let initialPage = 'page-dashboard';
             let initialFuncao = 'Todos';
             let initialRisco = 'Todos';
@@ -189,10 +178,8 @@ export function DashboardProvider({ children }) {
                     const searchParams = new URLSearchParams(window.location.search);
                     const hashString = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
                     const hashParams = new URLSearchParams(hashString);
-                    
                     const getParam = (key) => hashParams.get(key) || searchParams.get(key);
                     const hasParam = (key) => hashParams.has(key) || searchParams.has(key);
-
                     if (hasParam('page')) initialPage = getParam('page');
                     if (hasParam('funcao')) initialFuncao = getParam('funcao');
                     if (hasParam('risco')) initialRisco = getParam('risco');
@@ -204,35 +191,68 @@ export function DashboardProvider({ children }) {
                 }
             } catch(e) { console.error('Error parsing URL params:', e); }
 
+            // 3. ATUALIZAÇÃO INICIAL DO ESTADO
             dispatch({
                 type: 'BULK_UPDATE',
                 payload: { 
-                    config, 
-                    uiConfig, 
-                    filters, 
-                    sidebarPinned,
-                    activePage: initialPage,
-                    filterFuncao: initialFuncao,
-                    filterRisco: initialRisco,
-                    selectedMes: initialMes,
-                    urlParams: urlParamsForComparativo,
-                    isSharedMode
+                    config, uiConfig, filters, sidebarPinned,
+                    activePage: initialPage, filterFuncao: initialFuncao,
+                    filterRisco: initialRisco, selectedMes: initialMes,
+                    urlParams: urlParamsForComparativo, isSharedMode
                 },
             });
-
             applyUIConfig(uiConfig, true);
 
-            // Fetch available months for the dropdown globally
-            fetch('/api/months')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.months) {
-                        dispatch({ type: 'BULK_UPDATE', payload: { availableMonths: data.months } });
-                    }
-                })
-                .catch(err => console.error("Erro ao carregar meses", err));
+            // 4. SYNC DE CONFIGURAÇÕES VIA NUVEM (Sincronização seletiva)
+            try {
+                const syncRes = await fetch(`/api/sync-status?month=${initialMes}`);
+                if (syncRes.ok) {
+                    const syncData = await syncRes.json();
+                    if (syncData.success && syncData.files) {
+                        const files = syncData.files;
+                        
+                        const configsToSync = [
+                            { key: 'dashboardConfigV2', local: 'dashboardConfigV2' },
+                            { key: 'dashboardUIConfigV1', local: 'dashboardUIConfigV1' },
+                            { key: 'dashboardFiltersV1', local: 'dashboardFiltersV1' }
+                        ];
 
-            // Load data files
+                        for (const item of configsToSync) {
+                            // Tenta achar versão específica do mês ou global
+                            const serverFile = files.find(f => f.id === `${initialMes}/${item.key}`) || files.find(f => f.id === item.key);
+                            if (serverFile) {
+                                const cacheKey = `config_${item.key}_${initialMes}`;
+                                const cached = await DB.loadFile(cacheKey);
+                                if (!cached || cached.url !== serverFile.url) {
+                                    const res = await fetch(serverFile.url);
+                                    if (res.ok) {
+                                        const json = await res.json();
+                                        if (item.key === 'dashboardConfigV2') config = json;
+                                        if (item.key === 'dashboardUIConfigV1') uiConfig = json;
+                                        if (item.key === 'dashboardFiltersV1') filters = json;
+                                        
+                                        await DB.saveFile(cacheKey, { data: json }, serverFile.url);
+                                        Storage.save(item.local, json);
+                                    }
+                                } else {
+                                    if (item.key === 'dashboardConfigV2') config = cached.data;
+                                    if (item.key === 'dashboardUIConfigV1') uiConfig = cached.data;
+                                    if (item.key === 'dashboardFiltersV1') filters = cached.data;
+                                }
+                            }
+                        }
+                        dispatch({ type: 'BULK_UPDATE', payload: { config, uiConfig, filters } });
+                        applyUIConfig(uiConfig, true);
+                    }
+                }
+            } catch (e) { console.warn("Cloud config sync failed, using local", e); }
+
+            // 5. CARREGAR MESES DO DROPDOWN
+            fetch('/api/months').then(r => r.json()).then(d => {
+                if (d.success && d.months) dispatch({ type: 'BULK_UPDATE', payload: { availableMonths: d.months } });
+            }).catch(e => console.error("Erro meses", e));
+
+            // 6. CARREGAR DADOS CSV (Com Cache Inteligente)
             await loadData(initialMes, config, filters);
         };
 
@@ -241,20 +261,39 @@ export function DashboardProvider({ children }) {
                 const newDatasets = { ...initialState.datasets };
                 const newHeaders = { ...initialState.headers };
                 const statuses = {};
-                let loadedFromServerCnt = 0;
+                let loadedCount = 0;
+                let syncFromCloud = false;
+
+                // Pegar status de sincronização da nuvem
+                let serverFiles = [];
+                try {
+                    const syncRes = await fetch(`/api/sync-status?month=${monthToLoad}`);
+                    if (syncRes.ok) {
+                        const syncData = await syncRes.json();
+                        serverFiles = syncData.files || [];
+                    }
+                } catch (e) { console.warn("Sync status unreachable, using local cache"); }
 
                 const parseCSV = (text) => new Promise((resolve, reject) => {
                     Papa.parse(text, {
                         header: true, skipEmptyLines: true, transformHeader: h => h.trim(),
-                        complete: (res) => resolve(res),
-                        error: (err) => reject(err)
+                        complete: (res) => resolve(res), error: (err) => reject(err)
                     });
                 });
 
                 for (const key of ['funcionarios', 'vales', 'credito']) {
-                    let dataLoaded = false;
-                    
-                    try {
+                    const serverFile = serverFiles.find(f => f.id === key);
+                    const cacheKey = `data_${monthToLoad}_${key}`;
+                    const cached = await DB.loadFile(cacheKey);
+
+                    if (cached && serverFile && cached.url === serverFile.url) {
+                        // USA CACHE LOCAL - NADA MUDOU NA NUVEM
+                        newDatasets[key] = cached.data;
+                        newHeaders[key] = cached.headers;
+                        statuses[key] = { success: true, message: `Dispositivo (Sincronizado)` };
+                        loadedCount++;
+                    } else if (serverFile) {
+                        // BAIXA DA NUVEM - ARQUIVO NOVO OU DIFERENTE
                         const targetEndpoint = monthToLoad === 'atual' ? `/api/latest?type=${key}` : `/api/data?month=${monthToLoad}&type=${key}`;
                         const res = await fetch(targetEndpoint);
                         if (res.ok) {
@@ -263,76 +302,74 @@ export function DashboardProvider({ children }) {
                             if (parsed.data && parsed.data.length > 0) {
                                 newDatasets[key] = parsed.data;
                                 newHeaders[key] = parsed.meta.fields || [];
-                                statuses[key] = { success: true, message: `Dados atualizados da Nuvem - Mês: ${monthToLoad === 'atual' ? 'Mais recente' : monthToLoad} (${parsed.data.length} reg).` };
-                                
-                                DB.saveFile(key, { data: parsed.data, headers: parsed.meta.fields || [] }).catch(e => console.error("Cache error", e));
-                                
-                                dataLoaded = true;
-                                loadedFromServerCnt++;
+                                statuses[key] = { success: true, message: `Nuvem (Atualizado)` };
+                                await DB.saveFile(cacheKey, { data: parsed.data, headers: parsed.meta.fields || [] }, serverFile.url);
+                                loadedCount++;
+                                syncFromCloud = true;
                             }
                         }
-                    } catch (err) {
-                        console.warn(`Could not load ${key} from server:`, err);
+                    } else if (cached) {
+                        // FALLBACK PARA CACHE SE OFFLINE E NUVEM INDISPONÍVEL
+                        newDatasets[key] = cached.data;
+                        newHeaders[key] = cached.headers;
+                        statuses[key] = { success: true, message: `Modo Offline` };
+                        loadedCount++;
+                    }
+                }
+
+                // Carregar Configurações Específicas se não foram passadas
+                let effectiveConfig = currentConfig || state.config;
+                let effectiveFilters = currentFilters || state.filters;
+                
+                if (monthToLoad !== 'atual') {
+                    const confFile = serverFiles.find(f => f.id === `${monthToLoad}/dashboardConfigV2`);
+                    const filtFile = serverFiles.find(f => f.id === `${monthToLoad}/dashboardFiltersV1`);
+                    
+                    if (confFile) {
+                        const cachedConf = await DB.loadFile(`config_dashboardConfigV2_${monthToLoad}`);
+                        if (cachedConf && cachedConf.url === confFile.url) {
+                            effectiveConfig = cachedConf.data;
+                        } else {
+                            const res = await fetch(confFile.url);
+                            if (res.ok) {
+                                effectiveConfig = await res.json();
+                                await DB.saveFile(`config_dashboardConfigV2_${monthToLoad}`, { data: effectiveConfig }, confFile.url);
+                            }
+                        }
                     }
 
-                    if (!dataLoaded) {
-                        const stored = await DB.loadFile(key);
-                        if (stored && stored.data && stored.data.length > 0) {
-                            newDatasets[key] = stored.data;
-                            newHeaders[key] = stored.headers;
-                            statuses[key] = { success: true, message: `Dados carregados do cache local (${stored.data.length} reg). Sem rede.` };
+                    if (filtFile) {
+                        const cachedFilt = await DB.loadFile(`config_dashboardFiltersV1_${monthToLoad}`);
+                        if (cachedFilt && cachedFilt.url === filtFile.url) {
+                            effectiveFilters = cachedFilt.data;
                         } else {
-                            statuses[key] = { success: false, message: 'Nenhum dado encontrado no Servidor ou Cache.' };
+                            const res = await fetch(filtFile.url);
+                            if (res.ok) {
+                                effectiveFilters = await res.json();
+                                await DB.saveFile(`config_dashboardFiltersV1_${monthToLoad}`, { data: effectiveFilters }, filtFile.url);
+                            }
                         }
                     }
                 }
 
-                // NEW: Fetch month-specific configuration to handle changes in CSV structure over time
-                let effectiveConfig = currentConfig || state.config;
-                let effectiveFilters = currentFilters || state.filters;
-
-                if (monthToLoad !== 'atual') {
-                    try {
-                        const [resMonthConfig, resMonthFilters] = await Promise.all([
-                            fetch(`/api/config?key=${monthToLoad}/dashboardConfigV2`).then(r => r.ok ? r.json() : null),
-                            fetch(`/api/config?key=${monthToLoad}/dashboardFiltersV1`).then(r => r.ok ? r.json() : null)
-                        ]);
-                        if (resMonthConfig?.success) effectiveConfig = resMonthConfig.data;
-                        if (resMonthFilters?.success) effectiveFilters = resMonthFilters.data;
-                    } catch (e) { console.warn("Configurações específicas do mês não encontradas, usando Master."); }
-                }
-
-                const bulkPayload = {
-                    datasets: newDatasets,
-                    headers: newHeaders,
-                    fileStatuses: statuses,
-                    config: effectiveConfig, // Update the effective config for this month
-                    filters: effectiveFilters,
-                    initialized: true,
-                };
-
-                dispatch({ type: 'BULK_UPDATE', payload: bulkPayload });
+                dispatch({ type: 'BULK_UPDATE', payload: { 
+                    datasets: newDatasets, headers: newHeaders, fileStatuses: statuses, 
+                    config: effectiveConfig, filters: effectiveFilters, initialized: true 
+                } });
 
                 if (newDatasets.funcionarios.length > 0) {
-                    if(loadedFromServerCnt > 0) {
-                        showNotification(`Bases e Regras de ${monthToLoad === 'atual' ? 'Hoje' : monthToLoad} sincronizadas.`, 'success');
-                    } else {
-                        showNotification('Dados processados usando o cache local.', 'success');
-                    }
+                    if (syncFromCloud) showNotification(`Novos dados de ${monthToLoad} baixados da nuvem.`, 'success');
                     const result = processAllData(newDatasets, effectiveConfig, effectiveFilters);
-                    if (result.success && result.data.length > 0) {
-                        dispatch({ type: 'SET_MASTER_DATA', payload: result.data });
-                    }
+                    if (result.success && result.data.length > 0) dispatch({ type: 'SET_MASTER_DATA', payload: result.data });
                 }
             } catch (e) {
                 console.error(e);
-                showNotification('Erro ao carregar dados.', 'error');
+                showNotification('Erro ao sincronizar dados.', 'error');
                 dispatch({ type: 'SET_INITIALIZED' });
             }
         };
 
         initialLoad();
-
         dispatch({ type: 'BULK_UPDATE', payload: { reloadDataFunc: loadData } });
     }, [applyUIConfig, showNotification]);
 
