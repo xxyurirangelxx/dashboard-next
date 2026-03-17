@@ -218,7 +218,7 @@ export default function ValesPendentesPage() {
                                 className="hidden"
                                 disabled={loading}
                             />
-                            <div className={`inline-flex items-center justify-center h-10 px-4 py-2 rounded-md text-sm font-medium transition-colors border shadow-sm ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent hover:text-accent-foreground cursor-pointer bg-background'}`}>
+                            <div className={`inline-flex items-center justify-center h-10 px-5 py-2 rounded-xl text-sm font-bold transition-all border-2 shadow-sm active:scale-95 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:ring-2 hover:ring-primary/20 hover:border-primary/50 cursor-pointer bg-card hover:bg-muted text-foreground'}`}>
                                 <UploadCloud className="mr-2 h-4 w-4" />
                                 Importar Promax CSV
                             </div>
@@ -229,16 +229,16 @@ export default function ValesPendentesPage() {
                                 <button
                                     onClick={copyImageToClipboard}
                                     disabled={loading}
-                                    className={`inline-flex items-center justify-center h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`inline-flex items-center justify-center h-10 px-5 py-2 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 rounded-xl text-sm font-bold transition-all shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
-                                    <ImageIcon className="mr-2 h-4 w-4" />
+                                    <ImageIcon className="mr-2 h-5 w-5" />
                                     {loading ? 'Processando...' : 'Copiar como Imagem'}
                                 </button>
                                 <button
                                     onClick={copyUrlToClipboard}
-                                    className="inline-flex items-center justify-center h-10 px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-md text-sm font-medium transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    className="inline-flex items-center justify-center h-10 px-5 py-2 bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 rounded-xl text-sm font-bold transition-all shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                                 >
-                                    <Share2 className="mr-2 h-4 w-4" />
+                                    <Share2 className="mr-2 h-5 w-5" />
                                     Copiar Link da Aba
                                 </button>
                             </div>

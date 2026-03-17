@@ -45,9 +45,9 @@ export default function DetailsModal() {
                     </div>
                     <button
                         onClick={close}
-                        className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus:border-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="rounded-xl p-2.5 text-muted-foreground hover:text-foreground hover:bg-muted hover:shadow-sm active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                        <X className="h-5 w-5" />
+                        <X className="h-6 w-6" />
                     </button>
                 </div>
 

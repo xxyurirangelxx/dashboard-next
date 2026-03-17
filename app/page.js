@@ -41,10 +41,10 @@ function DashboardContent() {
         <div className="md:hidden flex h-16 items-center px-4 border-b bg-card w-full shadow-sm z-40 sticky top-0 justify-between">
           <span className="font-bold text-foreground truncate">{state.uiConfig?.mainTitle || "Dashboard PRO"}</span>
           <button
-            className="p-2 -mr-2 text-muted-foreground hover:bg-muted rounded-md"
+            className="p-2.5 -mr-2 text-muted-foreground hover:bg-muted rounded-xl hover:shadow-sm active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-6 h-6" />
           </button>
         </div>
       )}

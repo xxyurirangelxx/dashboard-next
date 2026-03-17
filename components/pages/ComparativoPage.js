@@ -274,14 +274,14 @@ export default function ComparativoPage() {
                         <button
                             onClick={() => processComparison(type)}
                             disabled={loading || availableMonths.length === 0 || !selectedMesAnterior || !selectedMesAtual}
-                            className="w-full inline-flex items-center justify-center h-12 px-6 border border-transparent shadow-sm text-sm font-semibold rounded-xl text-primary-foreground bg-primary hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full inline-flex items-center justify-center h-12 px-6 border border-transparent shadow-md text-sm font-bold rounded-xl text-primary-foreground bg-primary hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:active:scale-100"
                         >
                             {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Search className="mr-2 h-5 w-5" />}
                             {loading ? 'Analisando...' : 'Analisar e Comparar'}
                         </button>
                         <button
                             onClick={handleShareComparativo}
-                            className="w-full inline-flex items-center justify-center h-12 px-6 border bg-background text-foreground hover:bg-muted shadow-sm text-sm font-semibold rounded-xl transition-colors"
+                            className="w-full inline-flex items-center justify-center h-12 px-6 border-2 border-input bg-background text-foreground hover:bg-muted hover:text-primary hover:border-primary/30 shadow-sm text-sm font-bold rounded-xl hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all"
                         >
                             <Share2 className="mr-2 h-5 w-5 text-muted-foreground" />
                             Copiar Link desta Análise

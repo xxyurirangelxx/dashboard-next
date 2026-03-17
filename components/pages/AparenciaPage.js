@@ -127,8 +127,8 @@ export default function AparenciaPage() {
                 </div>
 
                 <div className="flex flex-col-reverse md:flex-row justify-end items-center mt-10 p-6 bg-muted/30 rounded-xl border gap-6">
-                    <button onClick={handleSave} className="w-full md:w-auto inline-flex items-center justify-center h-10 px-8 text-sm font-medium rounded-md text-primary-foreground bg-primary hover:bg-primary/90 transition-colors group">
-                        <Save className="mr-2 h-4 w-4" />
+                    <button onClick={handleSave} className="w-full md:w-auto inline-flex items-center justify-center h-11 px-8 text-sm font-bold rounded-xl text-primary-foreground bg-primary hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all group">
+                        <Save className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
                         Salvar e Aplicar Tema
                     </button>
                 </div>

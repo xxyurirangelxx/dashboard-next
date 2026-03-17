@@ -229,8 +229,8 @@ export default function ConfiguracoesPage() {
                                 </select>
                             </div>
                             <div className="md:col-span-12 mt-4 flex justify-end">
-                                <button onClick={addFilter} className="inline-flex items-center justify-center h-10 px-4 border border-transparent text-sm font-medium rounded-md text-primary-foreground bg-primary hover:bg-primary/90 transition-colors w-full md:w-auto">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                <button onClick={addFilter} className="inline-flex items-center justify-center h-11 px-6 border border-transparent text-sm font-bold rounded-xl text-primary-foreground bg-primary hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all w-full md:w-auto shadow-sm">
+                                    <PlusCircle className="mr-2 h-5 w-5" />
                                     Adicionar Regra
                                 </button>
                             </div>
@@ -281,12 +281,12 @@ export default function ConfiguracoesPage() {
                 </div>
 
                 <div className="flex flex-col-reverse md:flex-row justify-between items-center mt-10 p-6 bg-muted/30 rounded-xl border gap-6">
-                    <button onClick={clearStorage} className="w-full md:w-auto inline-flex items-center justify-center h-10 px-4 border border-destructive/50 text-sm font-medium rounded-md text-destructive hover:bg-destructive/10 transition-colors">
-                        <AlertTriangle className="mr-2 h-4 w-4" />
+                    <button onClick={clearStorage} className="w-full md:w-auto inline-flex items-center justify-center h-11 px-6 border-2 border-destructive/50 text-sm font-bold rounded-xl text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all">
+                        <AlertTriangle className="mr-2 h-5 w-5" />
                         Limpar Dados do Sistema
                     </button>
-                    <button onClick={handleSaveConfig} className="w-full md:w-auto inline-flex items-center justify-center h-10 px-8 text-sm font-medium rounded-md text-primary-foreground bg-primary hover:bg-primary/90 transition-colors group">
-                        <Save className="mr-2 h-4 w-4" />
+                    <button onClick={handleSaveConfig} className="w-full md:w-auto inline-flex items-center justify-center h-11 px-8 text-sm font-bold rounded-xl text-primary-foreground bg-primary hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all group">
+                        <Save className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
                         Salvar e Processar Tudo
                     </button>
                 </div>

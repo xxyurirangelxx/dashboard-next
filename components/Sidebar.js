@@ -159,9 +159,9 @@ export default function Sidebar() {
             <div className="p-4 border-t bg-muted/30 flex flex-col gap-3">
                 <button 
                     onClick={handleShare}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
-                    <Share2 className="w-4 h-4" />
+                    <Share2 className="w-5 h-5" />
                     Compartilhar Visão
                 </button>
                 <div className="flex items-center gap-3 px-2">

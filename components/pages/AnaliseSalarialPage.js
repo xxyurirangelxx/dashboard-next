@@ -58,7 +58,7 @@ export default function AnaliseSalarialPage() {
                         </div>
                         <button
                             onClick={handleExport}
-                            className="inline-flex items-center justify-center h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="inline-flex items-center justify-center h-11 px-6 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 rounded-xl text-sm font-bold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             <FileSpreadsheet className="mr-2 h-4 w-4" />
                             Exportar Excel
@@ -162,7 +162,7 @@ export default function AnaliseSalarialPage() {
                                             <td className="p-4 align-middle text-center">
                                                 <button
                                                     onClick={() => openDetails(item.matricula)}
-                                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3"
+                                                    className="inline-flex items-center justify-center rounded-lg text-sm font-bold transition-all active:scale-95 hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border-2 border-input bg-background shadow-sm hover:bg-primary/10 hover:text-primary hover:border-primary/50 h-9 px-4"
                                                 >
                                                     Detalhes
                                                 </button>
