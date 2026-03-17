@@ -58,13 +58,20 @@ export default function ConfiguracoesPage() {
         Storage.save('dashboardConfigV2', localConfig);
         Storage.save('dashboardFiltersV1', localFilters);
         
-        // SYNC TO CLOUD
-        Promise.all([
+        // SYNC TO CLOUD: Save as Master AND as Month-Specific version
+        const syncTasks = [
             fetch('/api/config', { method: 'POST', body: JSON.stringify({ key: 'dashboardConfigV2', data: localConfig }) }),
             fetch('/api/config', { method: 'POST', body: JSON.stringify({ key: 'dashboardFiltersV1', data: localFilters }) })
-        ]).catch(e => console.error("Cloud sync error Config/Filters", e));
+        ];
 
-        showNotification('Configuração salva na Nuvem! Processando dados...', 'success');
+        if (state.selectedMes !== 'atual') {
+            syncTasks.push(fetch('/api/config', { method: 'POST', body: JSON.stringify({ key: `${state.selectedMes}/dashboardConfigV2`, data: localConfig }) }));
+            syncTasks.push(fetch('/api/config', { method: 'POST', body: JSON.stringify({ key: `${state.selectedMes}/dashboardFiltersV1`, data: localFilters }) }));
+        }
+
+        Promise.all(syncTasks).catch(e => console.error("Cloud sync error Config/Filters", e));
+
+        showNotification(state.selectedMes === 'atual' ? 'Regras Globais sincronizadas na Nuvem!' : `Regras específicas para ${state.selectedMes} salvas!`, 'success');
 
         setTimeout(() => {
             const result = processAllData(datasets, localConfig, localFilters);

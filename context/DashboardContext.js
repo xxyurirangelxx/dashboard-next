@@ -287,10 +287,27 @@ export function DashboardProvider({ children }) {
                     }
                 }
 
+                // NEW: Fetch month-specific configuration to handle changes in CSV structure over time
+                let effectiveConfig = currentConfig || state.config;
+                let effectiveFilters = currentFilters || state.filters;
+
+                if (monthToLoad !== 'atual') {
+                    try {
+                        const [resMonthConfig, resMonthFilters] = await Promise.all([
+                            fetch(`/api/config?key=${monthToLoad}/dashboardConfigV2`).then(r => r.ok ? r.json() : null),
+                            fetch(`/api/config?key=${monthToLoad}/dashboardFiltersV1`).then(r => r.ok ? r.json() : null)
+                        ]);
+                        if (resMonthConfig?.success) effectiveConfig = resMonthConfig.data;
+                        if (resMonthFilters?.success) effectiveFilters = resMonthFilters.data;
+                    } catch (e) { console.warn("Configurações específicas do mês não encontradas, usando Master."); }
+                }
+
                 const bulkPayload = {
                     datasets: newDatasets,
                     headers: newHeaders,
                     fileStatuses: statuses,
+                    config: effectiveConfig, // Update the effective config for this month
+                    filters: effectiveFilters,
                     initialized: true,
                 };
 
@@ -298,11 +315,11 @@ export function DashboardProvider({ children }) {
 
                 if (newDatasets.funcionarios.length > 0) {
                     if(loadedFromServerCnt > 0) {
-                        showNotification('Bases sincronizadas com sucesso do servidor corporativo.', 'success');
+                        showNotification(`Bases e Regras de ${monthToLoad === 'atual' ? 'Hoje' : monthToLoad} sincronizadas.`, 'success');
                     } else {
                         showNotification('Dados processados usando o cache local.', 'success');
                     }
-                    const result = processAllData(newDatasets, currentConfig || state.config, currentFilters || state.filters);
+                    const result = processAllData(newDatasets, effectiveConfig, effectiveFilters);
                     if (result.success && result.data.length > 0) {
                         dispatch({ type: 'SET_MASTER_DATA', payload: result.data });
                     }
