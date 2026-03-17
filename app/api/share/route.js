@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir, readFile } from 'fs/promises';
-import { join } from 'path';
+import { put, list } from '@vercel/blob';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -14,13 +13,13 @@ export async function POST(request) {
         }
 
         const shareId = crypto.randomBytes(4).toString('hex');
-        const sharedDir = join(process.cwd(), 'data', 'shared');
+        const blobPath = `shared/${shareId}.json`;
         
-        await mkdir(sharedDir, { recursive: true });
-
-        const filePath = join(sharedDir, `${shareId}.json`);
-        
-        await writeFile(filePath, JSON.stringify(payload));
+        await put(blobPath, JSON.stringify(payload), {
+            access: 'public',
+            contentType: 'application/json',
+            token: process.env.BLOB_READ_WRITE_TOKEN
+        });
         
         return NextResponse.json({ success: true, shareId });
     } catch (e) {
@@ -38,14 +37,19 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'ID ausente' }, { status: 400 });
         }
 
-        const filePath = join(process.cwd(), 'data', 'shared', `${id}.json`);
+        const searchPrefix = `shared/${id}`;
+        const { blobs } = await list({ prefix: searchPrefix, limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
         
-        const fileContent = await readFile(filePath, 'utf-8');
-        const data = JSON.parse(fileContent);
+        if (blobs.length === 0) {
+            return NextResponse.json({ success: false, error: 'Compartilhamento não encontrado ou expirado' }, { status: 404 });
+        }
+
+        const res = await fetch(blobs[0].url);
+        const data = await res.json();
 
         return NextResponse.json({ success: true, data });
     } catch (e) {
         console.warn('Share file not found or corrupted:', e);
-        return NextResponse.json({ success: false, error: 'Compartilhamento não encontrado ou expirado' }, { status: 404 });
+        return NextResponse.json({ success: false, error: 'Erro ao buscar compartilhamento' }, { status: 404 });
     }
 }

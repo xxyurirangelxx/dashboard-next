@@ -57,7 +57,14 @@ export default function ConfiguracoesPage() {
         dispatch({ type: 'SET_FILTERS', payload: localFilters });
         Storage.save('dashboardConfigV2', localConfig);
         Storage.save('dashboardFiltersV1', localFilters);
-        showNotification('Configuração salva! Processando dados...', 'success');
+        
+        // SYNC TO CLOUD
+        Promise.all([
+            fetch('/api/config', { method: 'POST', body: JSON.stringify({ key: 'dashboardConfigV2', data: localConfig }) }),
+            fetch('/api/config', { method: 'POST', body: JSON.stringify({ key: 'dashboardFiltersV1', data: localFilters }) })
+        ]).catch(e => console.error("Cloud sync error Config/Filters", e));
+
+        showNotification('Configuração salva na Nuvem! Processando dados...', 'success');
 
         setTimeout(() => {
             const result = processAllData(datasets, localConfig, localFilters);

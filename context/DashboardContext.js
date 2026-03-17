@@ -119,7 +119,7 @@ export function DashboardProvider({ children }) {
         return true;
     }, [showNotification]);
 
-    const applyUIConfig = useCallback((configToApply) => {
+    const applyUIConfig = useCallback((configToApply, isInitial = false) => {
         const root = document.documentElement;
 
         // HSL version for new Shadcn/Tailwind configuration support
@@ -145,73 +145,96 @@ export function DashboardProvider({ children }) {
         }
         root.style.setProperty('--font-inter', `'${configToApply.fontFamily}', sans-serif`);
         document.body.style.fontFamily = `'${configToApply.fontFamily}', sans-serif`;
+
+        if (!isInitial) {
+             // Sync config to cloud
+             fetch('/api/config', {
+                 method: 'POST',
+                 body: JSON.stringify({ key: 'dashboardUIConfigV1', data: configToApply })
+             }).catch(e => console.error("Cloud sync error UI", e));
+        }
     }, []);
 
     // Initialize on mount
     useEffect(() => {
-        const config = Storage.load('dashboardConfigV2') || { ...defaultConfig };
-        const uiConfig = Storage.load('dashboardUIConfigV1') || { ...defaultUIConfig };
-        const filters = Storage.load('dashboardFiltersV1') || [];
-        const sidebarPinned = Storage.load('sidebarPinned') === true;
+        const initialLoad = async () => {
+            let config = Storage.load('dashboardConfigV2') || { ...defaultConfig };
+            let uiConfig = Storage.load('dashboardUIConfigV1') || { ...defaultUIConfig };
+            let filters = Storage.load('dashboardFiltersV1') || [];
+            const sidebarPinned = Storage.load('sidebarPinned') === true;
 
-        let initialPage = 'page-dashboard';
-        let initialFuncao = 'Todos';
-        let initialRisco = 'Todos';
-        let initialMes = 'atual';
-        let isSharedMode = false;
-        let urlParamsForComparativo = { tab: null, mesAnterior: null, mesAtual: null };
-        try {
-            if (typeof window !== 'undefined') {
-                const searchParams = new URLSearchParams(window.location.search);
-                const hashString = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
-                const hashParams = new URLSearchParams(hashString);
-                
-                const getParam = (key) => hashParams.get(key) || searchParams.get(key);
-                const hasParam = (key) => hashParams.has(key) || searchParams.has(key);
+            // TRY LOAD CONFIGS FROM CLOUD FIRST
+            try {
+                const [resConfig, resUI, resFilters] = await Promise.all([
+                    fetch('/api/config?key=dashboardConfigV2').then(r => r.ok ? r.json() : null),
+                    fetch('/api/config?key=dashboardUIConfigV1').then(r => r.ok ? r.json() : null),
+                    fetch('/api/config?key=dashboardFiltersV1').then(r => r.ok ? r.json() : null)
+                ]);
 
-                if (hasParam('page')) initialPage = getParam('page');
-                if (hasParam('funcao')) initialFuncao = getParam('funcao');
-                if (hasParam('risco')) initialRisco = getParam('risco');
-                if (hasParam('mes')) initialMes = getParam('mes');
-                if (hasParam('tab')) urlParamsForComparativo.tab = getParam('tab');
-                if (hasParam('mesAnterior')) urlParamsForComparativo.mesAnterior = getParam('mesAnterior');
-                if (hasParam('mesAtual')) urlParamsForComparativo.mesAtual = getParam('mesAtual');
-                if (hasParam('shared')) isSharedMode = getParam('shared') === 'true';
-                
-                // We no longer clear the URL entirely here because next router needs the hash for links.
-            }
-        } catch(e) { console.error('Error parsing URL params:', e); }
+                if (resConfig?.success) config = resConfig.data;
+                if (resUI?.success) uiConfig = resUI.data;
+                if (resFilters?.success) filters = resFilters.data;
+            } catch (e) { console.warn("Cloud config load failed, using local", e); }
 
-        dispatch({
-            type: 'BULK_UPDATE',
-            payload: { 
-                config, 
-                uiConfig, 
-                filters, 
-                sidebarPinned,
-                activePage: initialPage,
-                filterFuncao: initialFuncao,
-                filterRisco: initialRisco,
-                selectedMes: initialMes,
-                urlParams: urlParamsForComparativo,
-                isSharedMode
-            },
-        });
+            let initialPage = 'page-dashboard';
+            let initialFuncao = 'Todos';
+            let initialRisco = 'Todos';
+            let initialMes = 'atual';
+            let isSharedMode = false;
+            let urlParamsForComparativo = { tab: null, mesAnterior: null, mesAtual: null };
+            try {
+                if (typeof window !== 'undefined') {
+                    const searchParams = new URLSearchParams(window.location.search);
+                    const hashString = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
+                    const hashParams = new URLSearchParams(hashString);
+                    
+                    const getParam = (key) => hashParams.get(key) || searchParams.get(key);
+                    const hasParam = (key) => hashParams.has(key) || searchParams.has(key);
 
-        applyUIConfig(uiConfig);
-
-        // Fetch available months for the dropdown globally
-        fetch('/api/months')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && data.months) {
-                    dispatch({ type: 'BULK_UPDATE', payload: { availableMonths: data.months } });
+                    if (hasParam('page')) initialPage = getParam('page');
+                    if (hasParam('funcao')) initialFuncao = getParam('funcao');
+                    if (hasParam('risco')) initialRisco = getParam('risco');
+                    if (hasParam('mes')) initialMes = getParam('mes');
+                    if (hasParam('tab')) urlParamsForComparativo.tab = getParam('tab');
+                    if (hasParam('mesAnterior')) urlParamsForComparativo.mesAnterior = getParam('mesAnterior');
+                    if (hasParam('mesAtual')) urlParamsForComparativo.mesAtual = getParam('mesAtual');
+                    if (hasParam('shared')) isSharedMode = getParam('shared') === 'true';
                 }
-            })
-            .catch(err => console.error("Erro ao carregar meses", err));
+            } catch(e) { console.error('Error parsing URL params:', e); }
 
-        // Load persisted data (Try Server First, fallback to IndexedDB)
-        const loadData = async (monthToLoad) => {
+            dispatch({
+                type: 'BULK_UPDATE',
+                payload: { 
+                    config, 
+                    uiConfig, 
+                    filters, 
+                    sidebarPinned,
+                    activePage: initialPage,
+                    filterFuncao: initialFuncao,
+                    filterRisco: initialRisco,
+                    selectedMes: initialMes,
+                    urlParams: urlParamsForComparativo,
+                    isSharedMode
+                },
+            });
+
+            applyUIConfig(uiConfig, true);
+
+            // Fetch available months for the dropdown globally
+            fetch('/api/months')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.months) {
+                        dispatch({ type: 'BULK_UPDATE', payload: { availableMonths: data.months } });
+                    }
+                })
+                .catch(err => console.error("Erro ao carregar meses", err));
+
+            // Load data files
+            await loadData(initialMes, config, filters);
+        };
+
+        const loadData = async (monthToLoad, currentConfig, currentFilters) => {
             try {
                 const newDatasets = { ...initialState.datasets };
                 const newHeaders = { ...initialState.headers };
@@ -229,7 +252,6 @@ export function DashboardProvider({ children }) {
                 for (const key of ['funcionarios', 'vales', 'credito']) {
                     let dataLoaded = false;
                     
-                    // 1. Try fetching from server
                     try {
                         const targetEndpoint = monthToLoad === 'atual' ? `/api/latest?type=${key}` : `/api/data?month=${monthToLoad}&type=${key}`;
                         const res = await fetch(targetEndpoint);
@@ -241,7 +263,6 @@ export function DashboardProvider({ children }) {
                                 newHeaders[key] = parsed.meta.fields || [];
                                 statuses[key] = { success: true, message: `Dados atualizados da Nuvem - Mês: ${monthToLoad === 'atual' ? 'Mais recente' : monthToLoad} (${parsed.data.length} reg).` };
                                 
-                                // Silently cache to IndexedDB for offline fallback if needed
                                 DB.saveFile(key, { data: parsed.data, headers: parsed.meta.fields || [] }).catch(e => console.error("Cache error", e));
                                 
                                 dataLoaded = true;
@@ -252,7 +273,6 @@ export function DashboardProvider({ children }) {
                         console.warn(`Could not load ${key} from server:`, err);
                     }
 
-                    // 2. Fallback to IndexedDB (local cache)
                     if (!dataLoaded) {
                         const stored = await DB.loadFile(key);
                         if (stored && stored.data && stored.data.length > 0) {
@@ -280,25 +300,22 @@ export function DashboardProvider({ children }) {
                     } else {
                         showNotification('Dados processados usando o cache local.', 'success');
                     }
-                    const result = processAllData(newDatasets, config, filters);
+                    const result = processAllData(newDatasets, currentConfig || state.config, currentFilters || state.filters);
                     if (result.success && result.data.length > 0) {
                         dispatch({ type: 'SET_MASTER_DATA', payload: result.data });
                     }
                 }
             } catch (e) {
                 console.error(e);
-                showNotification('Erro ao carregar dados do cache.', 'error');
+                showNotification('Erro ao carregar dados.', 'error');
                 dispatch({ type: 'SET_INITIALIZED' });
             }
         };
 
-        loadData(initialMes);
+        initialLoad();
 
-        // Make loadData accessible in context for when the user changes dropdown manually
         dispatch({ type: 'BULK_UPDATE', payload: { reloadDataFunc: loadData } });
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [applyUIConfig, showNotification]);
 
     // Apply sidebar state
     useEffect(() => {
