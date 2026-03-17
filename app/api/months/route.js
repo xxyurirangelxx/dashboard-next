@@ -1,26 +1,30 @@
 import { NextResponse } from 'next/server';
-import { readdir } from 'fs/promises';
-import { join } from 'path';
+import { list } from '@vercel/blob';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        const uploadDir = join(process.cwd(), 'data', 'uploads');
-        const dirents = await readdir(uploadDir, { withFileTypes: true });
+        // Encontra todos os blobs do Vercel começando com uploads/
+        const { blobs } = await list({ prefix: 'uploads/' });
         
-        const months = dirents
-            .filter(dirent => dirent.isDirectory())
-            .map(dirent => dirent.name)
-            .sort((a, b) => b.localeCompare(a)); // Descending sort (newest first)
+        const monthSet = new Set();
+        
+        for (const blob of blobs) {
+            // O caminho será tipo: uploads/2024-03/vales.csv
+            const parts = blob.pathname.split('/');
+            
+            if (parts.length >= 3 && parts[1] !== 'atual') {
+                monthSet.add(parts[1]);
+            }
+        }
+        
+        const months = Array.from(monthSet).sort((a, b) => b.localeCompare(a)); // Ordem decrescente
             
         return NextResponse.json({ success: true, months });
     } catch (e) {
-        if (e.code === 'ENOENT') {
-            // Se o diretório não existir ainda, apenas retorne vazio
-            return NextResponse.json({ success: true, months: [] });
-        }
         console.error('Error listing months:', e);
-        return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+        // Em caso de erro (ex: storage não configurado), retorna um array vazio para não quebrar o frontend
+        return NextResponse.json({ success: true, months: [], error: e.message });
     }
 }

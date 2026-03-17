@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
+import { list } from '@vercel/blob';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +12,15 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'Tipo ausente' }, { status: 400 });
         }
 
-        const filePath = join(process.cwd(), 'data', 'uploads', 'atual', `${type}.csv`);
+        const exactPath = `uploads/atual/${type}.csv`;
+        const { blobs } = await list({ prefix: exactPath, limit: 1 });
         
-        const fileContent = await readFile(filePath, 'utf-8');
+        if (blobs.length === 0) {
+            return NextResponse.json({ success: false, error: 'Arquivo não encontrado no servidor' }, { status: 404 });
+        }
+
+        const res = await fetch(blobs[0].url);
+        const fileContent = await res.text();
         
         return new NextResponse(fileContent, {
             status: 200,
@@ -25,9 +30,6 @@ export async function GET(request) {
             },
         });
     } catch (e) {
-        if (e.code === 'ENOENT') {
-            return NextResponse.json({ success: false, error: 'Arquivo não encontrado no servidor' }, { status: 404 });
-        }
         console.error('Error reading latest file:', e);
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }

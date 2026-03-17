@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { put } from '@vercel/blob';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,21 +17,18 @@ export async function POST(request) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Upload to a dedicated data folder to avoid Next.js public caching issues
-        // Root of the project / data / uploads / YYYY-MM
-        const uploadDir = join(process.cwd(), 'data', 'uploads', month);
-        const atualDir = join(process.cwd(), 'data', 'uploads', 'atual');
-        
-        await mkdir(uploadDir, { recursive: true });
-        await mkdir(atualDir, { recursive: true });
+        // Upload to Vercel Blob
+        await put(`uploads/${month}/${type}.csv`, buffer, {
+            access: 'public',
+            addRandomSuffix: false, // Mantém o nome exato para podermos buscar depois
+        });
 
-        const filePath = join(uploadDir, `${type}.csv`);
-        const atualFilePath = join(atualDir, `${type}.csv`);
-        
-        await writeFile(filePath, buffer);
-        await writeFile(atualFilePath, buffer);
-        
-        return NextResponse.json({ success: true, message: 'Arquivo salvo com sucesso' });
+        await put(`uploads/atual/${type}.csv`, buffer, {
+            access: 'public',
+            addRandomSuffix: false,
+        });
+
+        return NextResponse.json({ success: true, message: 'Arquivo salvo com sucesso na Nuvem' });
     } catch (e) {
         console.error('Error saving file:', e);
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });
