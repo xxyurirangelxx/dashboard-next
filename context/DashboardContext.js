@@ -21,7 +21,7 @@ const initialState = {
     filters: [],
     chartColors: CHART_PALETTES.moderno,
     sidebarPinned: false,
-    notification: { message: '', type: 'success', show: false },
+    notifications: [], // array of {id, message, type}
     comparisonData: {
         vales: { mesAnterior: [], mesAtual: [] },
         credito: { mesAnterior: [], mesAtual: [] },
@@ -63,8 +63,10 @@ function reducer(state, action) {
             return { ...state, chartColors: action.payload };
         case 'SET_SIDEBAR_PINNED':
             return { ...state, sidebarPinned: action.payload };
-        case 'SET_NOTIFICATION':
-            return { ...state, notification: action.payload };
+        case 'ADD_NOTIFICATION':
+            return { ...state, notifications: [action.payload, ...state.notifications] };
+        case 'REMOVE_NOTIFICATION':
+            return { ...state, notifications: state.notifications.filter(n => n.id !== action.payload) };
         case 'SET_COMPARISON_DATA':
             return { ...state, comparisonData: { ...state.comparisonData, ...action.payload } };
         case 'SET_FILE_STATUS':
@@ -91,12 +93,12 @@ export function DashboardProvider({ children }) {
     const notificationTimeoutRef = useRef(null);
 
     const showNotification = useCallback((message, type = 'success') => {
-        if (notificationTimeoutRef.current) {
-            clearTimeout(notificationTimeoutRef.current);
-        }
-        dispatch({ type: 'SET_NOTIFICATION', payload: { message, type, show: true } });
-        notificationTimeoutRef.current = setTimeout(() => {
-            dispatch({ type: 'SET_NOTIFICATION', payload: { message: '', type: 'success', show: false } });
+        const id = Math.random().toString(36).substring(2, 9);
+        dispatch({ type: 'ADD_NOTIFICATION', payload: { id, message, type } });
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            dispatch({ type: 'REMOVE_NOTIFICATION', payload: id });
         }, 5000);
     }, []);
 
